@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [editingProduct, setEditingProduct] = useState<string | null>(null)
   const [modifiedBudget, setModifiedBudget] = useState('')
   const [updating, setUpdating] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [stats, setStats] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
@@ -90,6 +91,8 @@ export default function AdminDashboard() {
       return
     }
 
+    setActionLoading(productId)
+
     try {
       const response = await fetch(`/api/products/${productId}`, {
         method: 'PATCH',
@@ -106,6 +109,50 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       alert('An error occurred. Please try again.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function handleNotifyUser(productId: string) {
+    setActionLoading(productId)
+    try {
+      const response = await fetch(`/api/products/${productId}/demo/notify`, {
+        method: 'POST'
+      })
+      const data = await response.json()
+      if (response.ok) {
+        addNotification('User notified about the demo!', 'success')
+        fetchProducts()
+        fetchStats()
+      } else {
+        addNotification(data.error || 'Failed to notify user', 'error')
+      }
+    } catch (error) {
+      alert('An error occurred. Please try again.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function handleDeliver(productId: string) {
+    setActionLoading(productId)
+    try {
+      const response = await fetch(`/api/products/${productId}/demo/approve`, {
+        method: 'POST'
+      })
+      const data = await response.json()
+      if (response.ok) {
+        addNotification('Project delivered to the user!', 'success')
+        fetchProducts()
+        fetchStats()
+      } else {
+        addNotification(data.error || 'Failed to deliver project', 'error')
+      }
+    } catch (error) {
+      alert('An error occurred. Please try again.')
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -176,8 +223,20 @@ export default function AdminDashboard() {
                 <p className="text-3xl font-bold text-blue-600">{stats.acceptedProducts}</p>
               </div>
               <div className="glass p-4 rounded-xl shadow-lg hover-lift bg-indigo-50">
-                <h3 className="text-sm font-semibold text-gray-600 mb-1">Demos</h3>
+                <h3 className="text-sm font-semibold text-gray-600 mb-1">Demos Submitted</h3>
                 <p className="text-3xl font-bold text-indigo-600">{stats.demoSubmitted}</p>
+              </div>
+              <div className="glass p-4 rounded-xl shadow-lg hover-lift bg-orange-50">
+                <h3 className="text-sm font-semibold text-gray-600 mb-1">Awaiting Payment</h3>
+                <p className="text-3xl font-bold text-orange-600">{stats.paymentPending}</p>
+              </div>
+              <div className="glass p-4 rounded-xl shadow-lg hover-lift bg-purple-50">
+                <h3 className="text-sm font-semibold text-gray-600 mb-1">Payments Received</h3>
+                <p className="text-3xl font-bold text-purple-600">{stats.paymentCompleted}</p>
+              </div>
+              <div className="glass p-4 rounded-xl shadow-lg hover-lift bg-emerald-50">
+                <h3 className="text-sm font-semibold text-gray-600 mb-1">Delivered</h3>
+                <p className="text-3xl font-bold text-emerald-600">{stats.delivered}</p>
               </div>
               <div className="glass p-4 rounded-xl shadow-lg hover-lift bg-pink-50">
                 <h3 className="text-sm font-semibold text-gray-600 mb-1">Total Budget</h3>
@@ -204,7 +263,10 @@ export default function AdminDashboard() {
               <option value="approved">Approved</option>
               <option value="accepted">Accepted</option>
               <option value="demo_submitted">Demo Submitted</option>
+              <option value="payment_pending">Awaiting Payment</option>
+              <option value="payment_completed">Payment Received</option>
               <option value="demo_approved">Demo Approved</option>
+              <option value="delivered">Delivered</option>
               <option value="rejected">Rejected</option>
             </select>
           </div>
@@ -318,23 +380,55 @@ export default function AdminDashboard() {
                           </p>
                         )}
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                        product.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        product.status === 'demo_submitted' ? 'bg-yellow-100 text-yellow-800' :
-                        product.status === 'demo_approved' ? 'bg-green-100 text-green-800' :
-                        product.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
-                        product.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {product.status === 'demo_submitted' ? 'Demo Submitted' :
-                         product.status === 'demo_approved' ? 'Demo Approved' :
-                         product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                          product.status === 'approved'
+                            ? 'bg-green-100 text-green-800'
+                            : product.status === 'accepted'
+                            ? 'bg-blue-100 text-blue-800'
+                            : product.status === 'demo_submitted'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : product.status === 'payment_pending'
+                            ? 'bg-orange-100 text-orange-800'
+                            : product.status === 'payment_completed'
+                            ? 'bg-purple-100 text-purple-800'
+                            : product.status === 'demo_approved'
+                            ? 'bg-green-100 text-green-800'
+                            : product.status === 'delivered'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : product.status === 'rejected'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {{
+                          pending: 'Pending',
+                          approved: 'Approved',
+                          accepted: 'Accepted',
+                          demo_submitted: 'Demo Submitted',
+                          payment_pending: 'Awaiting Payment',
+                          payment_completed: 'Payment Received',
+                          demo_approved: 'Demo Approved',
+                          delivered: 'Delivered',
+                          rejected: 'Rejected'
+                        }[product.status] || product.status.charAt(0).toUpperCase() + product.status.slice(1)}
                       </span>
                     </div>
                     {product.acceptedSellerName && (
                       <p className="text-sm text-blue-600 mt-2">
                         Accepted by: <span className="font-semibold">{product.acceptedSellerName}</span>
                       </p>
+                    )}
+                    {['approved', 'accepted', 'payment_pending', 'demo_approved', 'delivered'].includes(product.status) && (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => handleReject(product.id)}
+                          disabled={actionLoading === product.id}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm disabled:opacity-60"
+                        >
+                          {actionLoading === product.id ? 'Processing...' : 'Reject Project'}
+                        </button>
+                      </div>
                     )}
                     {product.status === 'demo_submitted' && product.demoUrl && (
                       <div className="mt-4 pt-4 border-t bg-yellow-50 p-4 rounded-lg">
@@ -354,26 +448,11 @@ export default function AdminDashboard() {
                         )}
                         <div className="flex gap-2">
                           <button
-                            onClick={async () => {
-                              try {
-                                const response = await fetch(`/api/products/${product.id}/demo/approve`, {
-                                  method: 'POST'
-                                })
-                                if (response.ok) {
-                                  addNotification('Demo approved!', 'success')
-                                  fetchProducts()
-                                  fetchStats()
-                                } else {
-                                  const data = await response.json()
-                                  addNotification(data.error || 'Failed to approve demo', 'error')
-                                }
-                              } catch (error) {
-                                alert('An error occurred')
-                              }
-                            }}
-                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                            onClick={() => handleNotifyUser(product.id)}
+                            disabled={actionLoading === product.id}
+                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-60"
                           >
-                            ✓ Approve Demo
+                            {actionLoading === product.id ? 'Notifying...' : 'Notify User'}
                           </button>
                           <button
                             onClick={async () => {
@@ -396,9 +475,49 @@ export default function AdminDashboard() {
                                 alert('An error occurred')
                               }
                             }}
-                            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                            disabled={actionLoading === product.id}
+                            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-60"
                           >
                             ✗ Reject Demo
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {product.status === 'payment_pending' && product.demoUrl && (
+                      <div className="mt-4 pt-4 border-t bg-orange-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-orange-500 mb-2">Awaiting Payment</h4>
+                        <p className="text-sm text-gray-300 mb-3 font-medium">
+                          The user has been notified. Waiting for payment confirmation.
+                        </p>
+                        <button
+                          onClick={() => handleNotifyUser(product.id)}
+                          disabled={actionLoading === product.id}
+                          className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:opacity-60"
+                        >
+                          {actionLoading === product.id ? 'Sending Reminder...' : 'Send Reminder'}
+                        </button>
+                      </div>
+                    )}
+                    {product.status === 'payment_completed' && (
+                      <div className="mt-4 pt-4 border-t bg-purple-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-purple-500 mb-2">Payment Verified</h4>
+                        <p className="text-sm text-gray-300 mb-3 font-medium">
+                          Payment received from {product.userName}. Deliver the final project to complete.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleDeliver(product.id)}
+                            disabled={actionLoading === product.id}
+                            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:opacity-60"
+                          >
+                            {actionLoading === product.id ? 'Delivering...' : 'Deliver Project'}
+                          </button>
+                          <button
+                            onClick={() => handleReject(product.id)}
+                            disabled={actionLoading === product.id}
+                            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-60"
+                          >
+                            Reject
                           </button>
                         </div>
                       </div>
@@ -413,6 +532,22 @@ export default function AdminDashboard() {
                           className="text-blue-600 hover:underline"
                         >
                           View Final Demo →
+                        </a>
+                      </div>
+                    )}
+                    {product.status === 'delivered' && product.demoUrl && (
+                      <div className="mt-4 pt-4 border-t bg-emerald-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-emerald-500 mb-2">🎉 Project Delivered</h4>
+                        <p className="text-sm text-gray-300 mb-3 font-medium">
+                          Final delivery sent to the user. Great job!
+                        </p>
+                        <a 
+                          href={product.demoUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline"
+                        >
+                          View Delivery →
                         </a>
                       </div>
                     )}

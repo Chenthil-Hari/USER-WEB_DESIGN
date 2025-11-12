@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { addNotification } from '@/components/NotificationCenter'
 
 export default function UserDashboard() {
   const router = useRouter()
@@ -102,10 +103,13 @@ export default function UserDashboard() {
   // Calculate user statistics
   const totalProjects = products.length
   const pendingProjects = products.filter(p => p.status === 'pending').length
-  const activeProjects = products.filter(p => p.status === 'approved' || p.status === 'accepted' || p.status === 'demo_submitted').length
-  const completedProjects = products.filter(p => p.status === 'demo_approved').length
+  const activeStatuses = ['approved', 'accepted', 'demo_submitted', 'payment_pending', 'payment_completed', 'demo_approved', 'delivered']
+  const activeProjects = products.filter(p => activeStatuses.includes(p.status)).length
+  const completedProjects = products.filter(p => p.status === 'delivered').length
   const totalBudget = products.reduce((sum, p) => sum + (p.originalBudget || 0), 0)
-  const spentBudget = products.filter(p => p.status === 'demo_approved').reduce((sum, p) => sum + (p.adminModifiedBudget || p.originalBudget || 0), 0)
+  const spentBudget = products
+    .filter(p => p.status === 'payment_completed' || p.status === 'delivered')
+    .reduce((sum, p) => sum + (p.adminModifiedBudget || p.originalBudget || 0), 0)
   const projectsWithSellers = products.filter(p => p.acceptedSellerName)
 
   return (
@@ -231,14 +235,38 @@ export default function UserDashboard() {
                       <h3 className="font-bold text-lg mb-1 text-gray-100">{product.title}</h3>
                       <p className="text-sm text-gray-300 mb-2 font-medium">{product.description.substring(0, 100)}...</p>
                       <div className="flex items-center gap-4 text-sm">
-                        <span className={`px-3 py-1 rounded-full font-semibold ${
-                          product.status === 'demo_approved' ? 'bg-green-100 text-green-800' :
-                          product.status === 'demo_submitted' ? 'bg-yellow-100 text-yellow-800' :
-                          product.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
-                          product.status === 'approved' ? 'bg-indigo-100 text-indigo-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {product.status.replace('_', ' ').toUpperCase()}
+                        <span
+                          className={`px-3 py-1 rounded-full font-semibold ${
+                            product.status === 'demo_submitted'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : product.status === 'payment_pending'
+                              ? 'bg-orange-100 text-orange-800'
+                              : product.status === 'payment_completed'
+                              ? 'bg-purple-100 text-purple-800'
+                              : product.status === 'demo_approved'
+                              ? 'bg-green-100 text-green-800'
+                              : product.status === 'delivered'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : product.status === 'accepted'
+                              ? 'bg-blue-100 text-blue-800'
+                              : product.status === 'approved'
+                              ? 'bg-indigo-100 text-indigo-800'
+                              : product.status === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {{
+                            pending: 'Pending',
+                            approved: 'Approved',
+                            accepted: 'Accepted',
+                            demo_submitted: 'Demo Submitted',
+                            payment_pending: 'Awaiting Payment',
+                            payment_completed: 'Payment Received',
+                            demo_approved: 'User Approved',
+                            delivered: 'Delivered',
+                            rejected: 'Rejected'
+                          }[product.status] || product.status.replace('_', ' ').toUpperCase()}
                         </span>
                         {product.acceptedSellerName && (
                           <span className="text-gray-300 font-medium">👤 {product.acceptedSellerName}</span>
@@ -382,20 +410,41 @@ export default function UserDashboard() {
                           </p>
                         )}
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                        product.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
-                        product.status === 'demo_submitted' ? 'bg-yellow-100 text-yellow-800' :
-                        product.status === 'demo_approved' ? 'bg-green-100 text-green-800' :
-                        product.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        product.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {product.status === 'demo_submitted' ? 'Demo Submitted' :
-                         product.status === 'demo_approved' ? 'Demo Approved' :
-                         product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                          product.status === 'approved'
+                            ? 'bg-green-100 text-green-800'
+                            : product.status === 'accepted'
+                            ? 'bg-blue-100 text-blue-800'
+                            : product.status === 'demo_submitted'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : product.status === 'payment_pending'
+                            ? 'bg-orange-100 text-orange-800'
+                            : product.status === 'payment_completed'
+                            ? 'bg-purple-100 text-purple-800'
+                            : product.status === 'demo_approved'
+                            ? 'bg-green-100 text-green-800'
+                            : product.status === 'delivered'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : product.status === 'rejected'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {{
+                          pending: 'Pending',
+                          approved: 'Approved',
+                          accepted: 'Accepted',
+                          demo_submitted: 'Demo Submitted',
+                          payment_pending: 'Awaiting Payment',
+                          payment_completed: 'Payment Received',
+                          demo_approved: 'User Approved',
+                          delivered: 'Delivered',
+                          rejected: 'Rejected'
+                        }[product.status] || product.status.charAt(0).toUpperCase() + product.status.slice(1)}
                       </span>
                     </div>
-                    {product.status === 'demo_submitted' && product.demoUrl && (
+                    {['demo_submitted', 'payment_pending', 'payment_completed'].includes(product.status) && product.demoUrl && (
                       <div className="mt-4 pt-4 border-t bg-yellow-50 p-4 rounded-lg">
                         <h4 className="font-semibold mb-2 text-gray-100">Demo Submitted by {product.acceptedSellerName}</h4>
                         <div className="mb-3">
@@ -411,53 +460,65 @@ export default function UserDashboard() {
                         {product.demoDescription && (
                           <p className="text-sm text-gray-300 mb-3 font-medium">{product.demoDescription}</p>
                         )}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={async () => {
-                              try {
-                                const response = await fetch(`/api/products/${product.id}/demo/approve`, {
-                                  method: 'POST'
-                                })
-                                if (response.ok) {
-                                  addNotification('Demo approved!', 'success')
-                                  fetchProducts()
-                                } else {
-                                  const data = await response.json()
-                                  addNotification(data.error || 'Failed to approve demo', 'error')
+                        {product.status === 'demo_submitted' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/products/${product.id}/demo/approve`, {
+                                    method: 'POST'
+                                  })
+                                  if (response.ok) {
+                                    addNotification('Demo approved!', 'success')
+                                    fetchProducts()
+                                  } else {
+                                    const data = await response.json()
+                                    addNotification(data.error || 'Failed to approve demo', 'error')
+                                  }
+                                } catch (error) {
+                                  alert('An error occurred')
                                 }
-                              } catch (error) {
-                                alert('An error occurred')
-                              }
-                            }}
-                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                          >
-                            ✓ Approve Demo
-                          </button>
-                          <button
-                            onClick={async () => {
-                              const reason = prompt('Please provide a reason for rejection (optional):')
-                              try {
-                                const response = await fetch(`/api/products/${product.id}/demo/reject`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ rejectionReason: reason || '' })
-                                })
-                                if (response.ok) {
-                                  addNotification('Demo rejected. Product will be available for next seller.', 'info')
-                                  fetchProducts()
-                                } else {
-                                  const data = await response.json()
-                                  addNotification(data.error || 'Failed to reject demo', 'error')
+                              }}
+                              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                            >
+                              ✓ Approve Demo
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const reason = prompt('Please provide a reason for rejection (optional):')
+                                try {
+                                  const response = await fetch(`/api/products/${product.id}/demo/reject`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ rejectionReason: reason || '' })
+                                  })
+                                  if (response.ok) {
+                                    addNotification('Demo rejected. Product will be available for next seller.', 'info')
+                                    fetchProducts()
+                                  } else {
+                                    const data = await response.json()
+                                    addNotification(data.error || 'Failed to reject demo', 'error')
+                                  }
+                                } catch (error) {
+                                  alert('An error occurred')
                                 }
-                              } catch (error) {
-                                alert('An error occurred')
-                              }
-                            }}
-                            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                          >
-                            ✗ Reject Demo
-                          </button>
-                        </div>
+                              }}
+                              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                            >
+                              ✗ Reject Demo
+                            </button>
+                          </div>
+                        )}
+                        {product.status === 'payment_pending' && (
+                          <p className="text-sm text-orange-600 font-semibold mt-3">
+                            Admin has reviewed the demo. Please complete the payment to proceed.
+                          </p>
+                        )}
+                        {product.status === 'payment_completed' && (
+                          <p className="text-sm text-purple-600 font-semibold mt-3">
+                            Payment received. Admin will deliver the final project shortly.
+                          </p>
+                        )}
                       </div>
                     )}
                     {product.status === 'demo_approved' && product.demoUrl && (
@@ -471,6 +532,24 @@ export default function UserDashboard() {
                         >
                           View Final Demo →
                         </a>
+                      </div>
+                    )}
+                    {product.status === 'delivered' && product.demoUrl && (
+                      <div className="mt-4 pt-4 border-t bg-emerald-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-emerald-500 mb-2">🎉 Project Delivered!</h4>
+                        <a 
+                          href={product.demoUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline"
+                        >
+                          View Delivery →
+                        </a>
+                        {product.deliveredAt && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            Delivered on {new Date(product.deliveredAt).toLocaleString()}
+                          </p>
+                        )}
                       </div>
                     )}
                     <p className="text-xs text-gray-400 mt-2">

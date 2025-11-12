@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify product has demo submitted
-    if (product.status !== 'demo_submitted') {
+    if (product.status !== 'demo_submitted' && product.status !== 'payment_pending') {
       return NextResponse.json(
-        { error: 'Demo must be submitted before payment' },
+        { error: 'Demo must be reviewed by admin before payment' },
         { status: 400 }
       )
     }
@@ -133,6 +133,7 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
 
 
 

@@ -36,7 +36,7 @@ export async function POST(
     if (currentUser.role === 'admin') {
       if (product.status !== 'payment_completed') {
         return NextResponse.json(
-          { error: 'Payment must be completed before admin can approve and send demo to user' },
+          { error: 'Payment must be completed before admin can deliver the project' },
           { status: 400 }
         )
       }
@@ -62,16 +62,17 @@ export async function POST(
     
     // Update product status
     const updatedProduct = await updateProduct(params.id, {
-      status: 'demo_approved',
-      demoApprovedBy: userDetails?.name || currentUser.email
+      status: currentUser.role === 'admin' ? 'delivered' : 'demo_approved',
+      demoApprovedBy: userDetails?.name || currentUser.email,
+      deliveredAt: currentUser.role === 'admin' ? new Date().toISOString() : product.deliveredAt
     })
 
-    // If admin approved, notify the user
+    // If admin delivered, notify the user
     if (currentUser.role === 'admin') {
       await createUserNotification({
         userId: product.userId,
         productId: product.id,
-        message: `Your demo for "${product.title}" has been approved and sent by admin!`
+        message: `Your project "${product.title}" has been delivered. Thank you for completing the payment!`
       })
     }
 
@@ -86,7 +87,10 @@ export async function POST(
         await createNotification({
           sellerId: seller.id,
           productId: product.id,
-          message: `Your demo for "${product.title}" has been approved!`,
+          message:
+            currentUser.role === 'admin'
+              ? `Your project "${product.title}" has been delivered to the user.`
+              : `The user approved your demo for "${product.title}". Awaiting admin delivery.`,
           type: 'product_accepted'
         })
       }

@@ -33,9 +33,9 @@ export async function POST(
       )
     }
 
-    if (product.status !== 'demo_submitted') {
+    if (product.status !== 'demo_submitted' && product.status !== 'payment_pending') {
       return NextResponse.json(
-        { error: 'Demo must be submitted before rejection' },
+        { error: 'Demo must be in review before rejection' },
         { status: 400 }
       )
     }
@@ -59,7 +59,12 @@ export async function POST(
       acceptedSellerName: null,
       demoUrl: null,
       demoDescription: null,
-      demoSubmittedAt: null
+      demoSubmittedAt: null,
+      demoNotifiedAt: null,
+      paymentStatus: null,
+      paymentAmount: null,
+      paymentDate: null,
+      paymentTransactionId: null
     })
 
     // Notify the rejected seller
@@ -98,6 +103,7 @@ export async function POST(
     )
   }
 }
+
 
 
 

@@ -99,12 +99,13 @@ export interface Product {
   description: string
   originalBudget: number
   adminModifiedBudget: number | null
-  status: 'pending' | 'approved' | 'rejected' | 'accepted' | 'demo_submitted' | 'demo_approved' | 'demo_rejected' | 'payment_pending' | 'payment_completed'
+  status: 'pending' | 'approved' | 'rejected' | 'accepted' | 'demo_submitted' | 'demo_approved' | 'demo_rejected' | 'payment_pending' | 'payment_completed' | 'delivered'
   acceptedSellerId: string | null
   acceptedSellerName: string | null
   demoUrl: string | null
   demoDescription: string | null
   demoSubmittedAt: string | null
+  demoNotifiedAt: string | null
   demoApprovedBy: string | null
   demoRejectedBy: string | null
   demoRejectionReason: string | null
@@ -112,6 +113,7 @@ export interface Product {
   paymentAmount: number | null
   paymentDate: string | null
   paymentTransactionId: string | null
+  deliveredAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -138,6 +140,7 @@ export async function createProduct(product: Omit<Product, 'id' | 'createdAt' | 
     demoUrl: null,
     demoDescription: null,
     demoSubmittedAt: null,
+    demoNotifiedAt: null,
     demoApprovedBy: null,
     demoRejectedBy: null,
     demoRejectionReason: null,
@@ -145,6 +148,7 @@ export async function createProduct(product: Omit<Product, 'id' | 'createdAt' | 
     paymentAmount: null,
     paymentDate: null,
     paymentTransactionId: null,
+    deliveredAt: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductById, updateProduct } from '@/lib/db'
+import {
+  getProductById,
+  updateProduct,
+  getUsers,
+  createNotification,
+  createUserNotification,
+  getUserByEmail
+} from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
-import { getUsers } from '@/lib/db'
-import { createNotification } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
@@ -33,6 +38,7 @@ export async function PATCH(
 ) {
   try {
     const admin = await requireAuth('admin')
+    const adminDetails = await getUserByEmail(admin.email)
     const { adminModifiedBudget, status } = await request.json()
 
     const product = await getProductById(params.id)
@@ -53,9 +59,43 @@ export async function PATCH(
     
     if (status) {
       updates.status = status
+
+      if (status === 'rejected') {
+        updates.acceptedSellerId = null
+        updates.acceptedSellerName = null
+        updates.demoUrl = null
+        updates.demoDescription = null
+        updates.demoSubmittedAt = null
+        updates.demoNotifiedAt = null
+        updates.demoApprovedBy = null
+        updates.demoRejectedBy = adminDetails?.name || admin.email
+        updates.demoRejectionReason = 'Rejected by admin'
+        updates.paymentStatus = null
+        updates.paymentAmount = null
+        updates.paymentDate = null
+        updates.paymentTransactionId = null
+        updates.deliveredAt = null
+      }
     }
 
     const updatedProduct = await updateProduct(params.id, updates)
+
+    if (status === 'rejected') {
+      await createUserNotification({
+        userId: product.userId,
+        productId: product.id,
+        message: `Your project "${product.title}" has been rejected by the admin.`
+      })
+
+      if (product.acceptedSellerId) {
+        await createNotification({
+          sellerId: product.acceptedSellerId,
+          productId: product.id,
+          message: `The project "${product.title}" has been rejected by the admin.`,
+          type: 'product_taken'
+        })
+      }
+    }
 
     // If admin modified budget, notify all sellers
     if (adminModifiedBudget !== undefined && updates.status === 'approved') {

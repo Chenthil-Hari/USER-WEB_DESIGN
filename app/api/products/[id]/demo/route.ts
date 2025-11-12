@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductById, updateProduct } from '@/lib/db'
+import { getProductById, updateProduct, getUsers, createUserNotification } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 
 export async function POST(
@@ -66,6 +66,20 @@ export async function POST(
       demoSubmittedAt: new Date().toISOString(),
       status: 'demo_submitted'
     })
+
+    // Notify all admins that a demo has been submitted
+    const users = await getUsers()
+    const admins = users.filter(u => u.role === 'admin')
+
+    await Promise.all(
+      admins.map(admin =>
+        createUserNotification({
+          userId: admin.id,
+          productId: product.id,
+          message: `New demo submitted for "${product.title}" by ${sellerDetails.name}. Please review and notify the user.`
+        })
+      )
+    )
 
     return NextResponse.json({ product: updatedProduct })
   } catch (error: any) {

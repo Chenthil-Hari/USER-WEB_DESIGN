@@ -16,7 +16,10 @@ export async function GET(request: NextRequest) {
       approvedProducts: products.filter(p => p.status === 'approved').length,
       acceptedProducts: products.filter(p => p.status === 'accepted').length,
       demoSubmitted: products.filter(p => p.status === 'demo_submitted').length,
+      paymentPending: products.filter(p => p.status === 'payment_pending').length,
+      paymentCompleted: products.filter(p => p.status === 'payment_completed').length,
       demoApproved: products.filter(p => p.status === 'demo_approved').length,
+      delivered: products.filter(p => p.status === 'delivered').length,
       totalUsers: users.filter(u => u.role === 'user').length,
       totalSellers: users.filter(u => u.role === 'seller').length,
       totalNotifications: notifications.length,
@@ -40,6 +43,7 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
 
 
 

@@ -180,10 +180,13 @@ export default function SellerDashboard() {
   const unreadNotifications = notifications.filter(n => !n.read).length
   
   // Calculate seller statistics
-  const acceptedProducts = products.filter(p => p.status === 'accepted' || p.status === 'demo_submitted' || p.status === 'demo_approved')
-  const completedProducts = products.filter(p => p.status === 'demo_approved')
-  const totalEarnings = acceptedProducts.reduce((sum, p) => sum + (p.adminModifiedBudget || 0), 0)
-  const pendingEarnings = products.filter(p => p.status === 'demo_submitted').reduce((sum, p) => sum + (p.adminModifiedBudget || 0), 0)
+  const acceptedStatuses = ['accepted', 'demo_submitted', 'payment_pending', 'payment_completed', 'demo_approved', 'delivered']
+  const acceptedProducts = products.filter(p => acceptedStatuses.includes(p.status))
+  const completedProducts = products.filter(p => p.status === 'delivered')
+  const totalEarnings = completedProducts.reduce((sum, p) => sum + (p.adminModifiedBudget || 0), 0)
+  const pendingEarnings = products
+    .filter(p => p.status === 'demo_submitted' || p.status === 'payment_pending' || p.status === 'payment_completed')
+    .reduce((sum, p) => sum + (p.adminModifiedBudget || 0), 0)
   const completionRate = acceptedProducts.length > 0 ? Math.round((completedProducts.length / acceptedProducts.length) * 100) : 0
 
   return (
@@ -387,15 +390,32 @@ export default function SellerDashboard() {
                         )}
                       </div>
                       <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                        product.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
-                        product.status === 'demo_submitted' ? 'bg-yellow-100 text-yellow-800' :
-                        product.status === 'demo_approved' ? 'bg-green-100 text-green-800' :
-                        'bg-green-100 text-green-800'
+                        product.status === 'accepted'
+                          ? 'bg-blue-100 text-blue-800'
+                          : product.status === 'demo_submitted'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : product.status === 'payment_pending'
+                          ? 'bg-orange-100 text-orange-800'
+                          : product.status === 'payment_completed'
+                          ? 'bg-purple-100 text-purple-800'
+                          : product.status === 'demo_approved'
+                          ? 'bg-green-100 text-green-800'
+                          : product.status === 'delivered'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : product.status === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-green-100 text-green-800'
                       }`}>
-                        {product.status === 'accepted' ? 'Accepted' : 
-                         product.status === 'demo_submitted' ? 'Demo Submitted' :
-                         product.status === 'demo_approved' ? 'Demo Approved' :
-                         'Approved'}
+                        {{
+                          approved: 'Approved',
+                          accepted: 'Accepted',
+                          demo_submitted: 'Demo Submitted',
+                          payment_pending: 'Awaiting Payment',
+                          payment_completed: 'Payment Received',
+                          demo_approved: 'User Approved',
+                          delivered: 'Delivered',
+                          rejected: 'Rejected'
+                        }[product.status] || product.status}
                       </span>
                     </div>
                     {product.status === 'accepted' && (
@@ -516,7 +536,11 @@ export default function SellerDashboard() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => setShowDemoForm(product.id)}
+                            onClick={() => {
+                              setShowDemoForm(product.id)
+                              setDemoData({ url: '', description: '', file: null })
+                              setUploadType('url')
+                            }}
                             className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-semibold shadow-lg transform hover:scale-105 transition-all"
                           >
                             📤 Upload Demo
@@ -524,7 +548,7 @@ export default function SellerDashboard() {
                         )}
                       </div>
                     )}
-                    {product.status === 'demo_submitted' && product.demoUrl && (
+                    {['demo_submitted', 'payment_pending', 'payment_completed'].includes(product.status) && product.demoUrl && (
                       <div className="mt-4 pt-4 border-t border-gray-700">
                         <p className="text-sm text-gray-300 mb-2">
                           <strong className="text-gray-100">Demo Submitted:</strong>{' '}
@@ -536,7 +560,9 @@ export default function SellerDashboard() {
                           <p className="text-sm text-gray-400">{product.demoDescription}</p>
                         )}
                         <p className="text-xs text-gray-500 mt-2">
-                          Waiting for approval...
+                          {product.status === 'demo_submitted' && 'Waiting for admin review...'}
+                          {product.status === 'payment_pending' && 'Admin notified the user. Awaiting payment.'}
+                          {product.status === 'payment_completed' && 'Payment received. Waiting for admin delivery.'}
                         </p>
                       </div>
                     )}
@@ -548,6 +574,21 @@ export default function SellerDashboard() {
                         <a href={product.demoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline text-sm">
                           View Demo →
                         </a>
+                      </div>
+                    )}
+                    {product.status === 'delivered' && product.demoUrl && (
+                      <div className="mt-4 pt-4 border-t border-gray-700 bg-emerald-900/20 p-3 rounded-lg">
+                        <p className="text-sm text-emerald-400 font-semibold mb-2">
+                          🎉 Project Delivered!
+                        </p>
+                        <a href={product.demoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline text-sm">
+                          View Final Delivery →
+                        </a>
+                        {product.deliveredAt && (
+                          <p className="text-xs text-gray-400 mt-2">
+                            Delivered on {new Date(product.deliveredAt).toLocaleString()}
+                          </p>
+                        )}
                       </div>
                     )}
                     <p className="text-xs text-gray-400 mt-2">
